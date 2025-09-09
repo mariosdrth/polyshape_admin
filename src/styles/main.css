@@ -1,0 +1,124 @@
+/* App-level styles */
+:root {
+  --bg: #0b0c0f;
+  --text: #e6e6e6;
+  --muted: #a0a6b0;
+  --card: #151821;
+  --border: #222634;
+  --accent: #7c9eff;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f7f7fb;
+    --text: #1f2430;
+    --muted: #5f6673;
+    --card: #ffffff;
+    --border: #e5e7ef;
+    --accent: #3b82f6;
+  }
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  color: var(--text);
+  background: linear-gradient(180deg, var(--bg), color-mix(in oklab, var(--bg), #000 6%));
+}
+
+.app {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.app-title {
+  margin: 0 0 8px;
+  font-size: 1.75rem;
+}
+
+.app-subtitle {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.app ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.app li {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.app a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.app a:hover {
+  text-decoration: underline;
+}
+
+/* Publications list styles */
+.pub-item { display: grid; gap: 8px; }
+.pub-pathname { margin: 0; font-size: 1.05rem; }
+.pub-content { display: grid; gap: 6px; }
+.pub-header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 10px;
+}
+.pub-date {
+  padding: 2px 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.pub-title { margin: 0; font-size: 1.15rem; }
+.pub-meta { color: var(--muted); font-size: 0.95rem; display: grid; gap: 2px; }
+.pub-authors { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Pagination */
+.pagination {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.page-btn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+}
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.page-info { color: var(--muted); }
+
+/* Loading overlay */
+.loading__overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--bg), #000 40%);
+  z-index: 9999;
+}

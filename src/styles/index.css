@@ -1,6 +1,2 @@
 @import "./main.css";
-
-/* Base reset touches for consistency */
-* { box-sizing: border-box; }
-img, svg { display: block; max-width: 100%; }
-button { font: inherit; }
+@import "@fortawesome/fontawesome-free/css/all.min.css";

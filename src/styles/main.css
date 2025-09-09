@@ -1,23 +1,21 @@
 /* App-level styles */
 :root {
-  --bg: #0b0c0f;
+  --bg: #070D1A;
   --text: #e6e6e6;
   --muted: #a0a6b0;
   --card: #151821;
   --border: #222634;
   --accent: #7c9eff;
+  --main-purple: #6165AD;
+  --secondary-purple: #949BDD;
+  --main-orange: #D69D0D;
+  --secondary-orange: #FFC545;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f7f7fb;
-    --text: #1f2430;
-    --muted: #5f6673;
-    --card: #ffffff;
-    --border: #e5e7ef;
-    --accent: #3b82f6;
-  }
-}
+/* Base reset touches for consistency */
+* { box-sizing: border-box; }
+img, svg { display: block; max-width: 100%; }
+button { font: inherit; }
 
 html, body, #root {
   height: 100%;
@@ -71,7 +69,7 @@ body {
 }
 
 /* Publications list styles */
-.pub-item { display: grid; gap: 8px; }
+.pub-item { display: grid; gap: 8px; position: relative; }
 .pub-pathname { margin: 0; font-size: 1.05rem; }
 .pub-content { display: grid; gap: 6px; }
 .pub-header {
@@ -97,6 +95,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-self: center;
 }
 .page-btn {
   padding: 6px 10px;
@@ -111,3 +110,236 @@ body {
   cursor: not-allowed;
 }
 .page-info { color: var(--muted); }
+
+/* Icon button + trash */
+.icon-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 6px 8px;
+  line-height: 0;
+  cursor: pointer;
+}
+.icon-btn:hover {
+  color: var(--text);
+  background: color-mix(in oklab, var(--card), #000 6%);
+}
+.icon-btn:active {
+  transform: translateY(1px);
+}
+.pub-trash {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+}
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 8px; }
+.btn .label { margin-left: 8px; }
+
+/* Toolbar search field */
+.toolbar-search { position: relative; }
+.toolbar-search input[type="search"] {
+  width: 260px;
+  max-width: 50vw;
+  padding: 8px 10px;
+  padding-right: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--card), #fff 8%);
+  color: var(--text);
+}
+/* Hide native WebKit clear (so we don't get two X buttons) */
+.toolbar-search input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+.toolbar-search input[type="search"]::placeholder { color: var(--muted); }
+.toolbar-search input[type="search"]:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--accent), #000 15%);
+}
+.toolbar-search .search-clear {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  color: #fff;
+  line-height: 0;
+  cursor: pointer;
+  opacity: 0.9;
+}
+.toolbar-search .search-clear:hover { opacity: 1; }
+.toolbar-search .search-clear:active {
+  opacity: 1;
+  /* Keep centering and nudge by 1px */
+  transform: translateY(calc(-50% + 1px));
+}
+
+.loading__overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20000; /* Above modal overlay (10000) */
+}
+
+/* Tabs */
+.tabs { display: grid; gap: 14px; margin-top: 6px; }
+.tabs-list { display: flex; gap: 8px; border-bottom: 1px solid var(--border); }
+.tab {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--muted);
+  padding: 8px 12px;
+  cursor: pointer;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+.tab:hover { color: var(--text); }
+.tab.is-active {
+  color: var(--text);
+  background: var(--card);
+  border-color: var(--border);
+  border-bottom-color: transparent;
+}
+.tab-panels { }
+.tab-panel { }
+
+/* Generic buttons */
+.btn {
+  appearance: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.btn-default {
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--card), #fff 8%);
+  color: var(--text);
+}
+.btn-default:hover { background: color-mix(in oklab, var(--card), #fff 12%); }
+.btn-primary {
+  border: 1px solid color-mix(in oklab, var(--main-orange), #000 15%);
+  background: var(--main-orange);
+  color: #101010;
+}
+.btn-primary:hover {
+  filter: brightness(0.95);
+}
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  pointer-events: none;
+}
+.modal-overlay.is-open { opacity: 1; pointer-events: auto; }
+.modal {
+  width: min(560px, 92vw);
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  max-height: 90vh;
+  overflow: hidden;
+  transform: translateY(10px) scale(0.98);
+  opacity: 0;
+  transition: transform 180ms ease, opacity 160ms ease;
+}
+.modal.is-open { transform: translateY(0) scale(1); opacity: 1; }
+.modal-header { display: flex; align-items: center; }
+.modal-title { margin: 0; font-size: 1.15rem; }
+.modal-body { color: var(--text); overflow: auto; }
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* Larger form modal */
+.modal--lg { width: min(720px, 96vw); }
+.modal--lg .modal-body { min-height: 40vh; }
+
+/* Simple form layout for modal forms */
+.form-grid { display: grid; gap: 10px; }
+.form-grid label { display: grid; gap: 6px; }
+.form-grid input[type="text"],
+.form-grid input[type="url"],
+.form-grid input[type="date"],
+.form-grid textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--card), #fff 8%);
+  color: var(--text);
+}
+.form-grid input[type="text"]:hover,
+.form-grid input[type="url"]:hover,
+.form-grid input[type="date"]:hover,
+.form-grid textarea:hover {
+  background: color-mix(in oklab, var(--card), #fff 12%);
+}
+.form-grid input[type="date"] {
+  /* Hint dark UI to the UA and smooth out look */
+  color-scheme: dark;
+}
+/* Chromium/WebKit: make the calendar icon visible on dark bg */
+/* Hide native icon; we provide our own button */
+.form-grid input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
+/* Ensure date parts use our text color in WebKit */
+.form-grid input[type="date"]::-webkit-datetime-edit,
+.form-grid input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.form-grid input[type="date"]::-webkit-datetime-edit-text,
+.form-grid input[type="date"]::-webkit-datetime-edit-year-field,
+.form-grid input[type="date"]::-webkit-datetime-edit-month-field,
+.form-grid input[type="date"]::-webkit-datetime-edit-day-field {
+  color: var(--text);
+}
+.form-grid textarea { resize: vertical; }
+.form-grid input:focus,
+.form-grid textarea:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--accent), #000 15%);
+}
+
+/* Date field with custom trigger */
+.form-grid .date-field { position: relative; }
+.form-grid .date-field input[type="date"] { padding-right: 40px; }
+.form-grid .date-field .date-btn {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  padding: 6px 8px;
+}

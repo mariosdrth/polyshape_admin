@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLoading } from "../ui/spinner/useLoading";
 
 type PublicationListItem = {
   url: string;
@@ -63,18 +62,14 @@ const toDetail = (u: unknown): PublicationDetail | null => {
 
 export default function PublicationsList() {
   const [items, setItems] = useState<EnrichedItem[] | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
-  const { setLoadingState } = useLoading();
 
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
       try {
-        setLoadingState("loading");
-        setLoading(true);
         setError(null);
         // Fetch list
         const res = await fetch(API_URL, { signal: controller.signal });
@@ -120,8 +115,7 @@ export default function PublicationsList() {
         if (isAbortError(e)) return;
         setError(e instanceof Error ? e.message : "Failed to load");
       } finally {
-        setLoadingState(null);
-        setLoading(false);
+        // no-op
       }
     };
     load();
@@ -140,76 +134,79 @@ export default function PublicationsList() {
     setPage((p) => Math.min(Math.max(1, p), totalPages));
   }, [list]);
 
-  if (loading) return <p>Loading publications…</p>;
   if (error) return <p style={{ color: "crimson" }}>Error: {error}</p>;
-  if (!list.length) return <p>No publications found.</p>;
+  if (items === null) return <p>Loading publications…</p>;
 
   const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
   const start = (page - 1) * PAGE_SIZE;
   const paged = list.slice(start, start + PAGE_SIZE);
 
-  return (
-    <>
-      <ul>
-        {paged.map((item) => {
-          const key = item.pathname;
-          const d = item.detail;
-          return (
-            <li key={key} className="pub-item">
-              <h3 className="pub-pathname" title={item.pathname}>
-                {lastPathSegment(item.pathname)}
-              </h3>
-              {!d && item.error && (
-                <p className="pub-error" style={{ color: "crimson" }}>
-                  Error: {item.error}
-                </p>
-              )}
-              {d && (
-                <div className="pub-content">
-                  <div className="pub-header">
-                    <span className="pub-date" title={d.date}>
-                      {d.date}
-                    </span>
-                    <h2 className="pub-title">{d.title}</h2>
+  if (list.length !== 0) {
+    return (
+      <>
+        <ul>
+          {paged.map((item) => {
+            const key = item.pathname;
+            const d = item.detail;
+            return (
+              <li key={key} className="pub-item">
+                <h3 className="pub-pathname" title={item.pathname}>
+                  {lastPathSegment(item.pathname)}
+                </h3>
+                {!d && item.error && (
+                  <p className="pub-error" style={{ color: "crimson" }}>
+                    Error: {item.error}
+                  </p>
+                )}
+                {d && (
+                  <div className="pub-content">
+                    <div className="pub-header">
+                      <span className="pub-date" title={d.date}>
+                        {d.date}
+                      </span>
+                      <h2 className="pub-title">{d.title}</h2>
+                    </div>
+                    <div className="pub-meta">
+                      {d.authors.length > 0 && (
+                        <div
+                          className="pub-authors"
+                          title={d.authors.filter(Boolean).join(", ")}
+                        >
+                          {d.authors.filter(Boolean).join(", ")}
+                        </div>
+                      )}
+                      {d.venue && <div className="pub-venue">{d.venue}</div>}
+                    </div>
                   </div>
-                  <div className="pub-meta">
-                    {d.authors.length > 0 && (
-                      <div
-                        className="pub-authors"
-                        title={d.authors.filter(Boolean).join(", ")}
-                      >
-                        {d.authors.filter(Boolean).join(", ")}
-                      </div>
-                    )}
-                    {d.venue && <div className="pub-venue">{d.venue}</div>}
-                  </div>
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      {list.length > PAGE_SIZE && (
-        <div className="pagination">
-          <button
-            className="page-btn"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-          >
-            Prev
-          </button>
-          <span className="page-info">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            className="page-btn"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-          >
-            Next
-          </button>
-        </div>
-      )}
-    </>
-  );
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        {list.length > PAGE_SIZE && (
+          <div className="pagination">
+            <button
+              className="page-btn"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              Prev
+            </button>
+            <span className="page-info">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              className="page-btn"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </>
+    );
+  } else {
+    return <p>No publications found.</p>;
+  }
 }

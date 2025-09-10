@@ -31,13 +31,12 @@ export default function Tabs({ tabs, active, onChange }: TabsProps) {
           </button>
         ))}
       </div>
-      <div className="tab-panels">
+      <div>
         {tabs.map((t) => (
           <div
             key={t.key}
             role="tabpanel"
             hidden={active !== t.key}
-            className="tab-panel"
           >
             {t.content}
           </div>

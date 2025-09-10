@@ -1,23 +1,26 @@
-export type PublicationListItem = {
+export type ProjectListItem = {
   url: string;
   pathname: string;
 };
 
-export type PublicationDetail = {
-  title: string;
-  content: string | string[];
-  date: string;
-  publicationUrl: string;
-  authors: string[];
-  venue: string;
+export type ProjectPartner = {
+  name: string;
+  url: string;
 };
 
-export type EnrichedItem = PublicationListItem & {
-  detail?: PublicationDetail;
+export type ProjectDetail = {
+  title: string;
+  content: string;
+  date: string;
+  partner: ProjectPartner;
+};
+
+export type EnrichedItem = ProjectListItem & {
+  detail?: ProjectDetail;
   error?: string;
 };
 
-const API_BASE = "https://polyshape-mock.vercel.app/api/publications";
+const API_BASE = "https://polyshape-mock.vercel.app/api/projects";
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null;
@@ -25,7 +28,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 const isAbortError = (e: unknown): e is DOMException =>
   e instanceof DOMException && e.name === "AbortError";
 
-const toListItem = (u: unknown): PublicationListItem | null => {
+const toListItem = (u: unknown): ProjectListItem | null => {
   if (!isRecord(u)) return null;
   const url = typeof u.url === "string" ? u.url : null;
   const pathname = typeof u.pathname === "string" ? u.pathname : null;
@@ -33,31 +36,28 @@ const toListItem = (u: unknown): PublicationListItem | null => {
   return { url, pathname };
 };
 
-const toDetail = (u: unknown): PublicationDetail | null => {
+const toDetail = (u: unknown): ProjectDetail | null => {
   if (!isRecord(u)) return null;
   const title = typeof u.title === "string" ? u.title : null;
-  let content: string | string[] = "";
-  if (typeof (u as Record<string, unknown>).content === "string") {
-    content = (u as Record<string, unknown>).content as string;
-  } else if (Array.isArray((u as Record<string, unknown>).content)) {
-    const arr = (u as Record<string, unknown>).content as unknown[];
-    content = arr
-      .filter((p): p is string => typeof p === "string")
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0);
-  }
+  const content = typeof u.content === "string" ? u.content : "";
   const date = typeof u.date === "string" ? u.date : "";
-  const publicationUrl =
-    typeof u.publicationUrl === "string" ? u.publicationUrl : "";
-  const authors = Array.isArray(u.authors)
-    ? (u.authors.filter((a) => typeof a === "string") as string[])
-    : [];
-  const venue = typeof u.venue === "string" ? u.venue : "";
+
+  let partner: ProjectPartner = { name: "", url: "" };
+  const rawPartner = isRecord((u as Record<string, unknown>).partner)
+    ? ((u as Record<string, unknown>).partner as Record<string, unknown>)
+    : null;
+  if (rawPartner) {
+    partner = {
+      name: typeof rawPartner.name === "string" ? rawPartner.name : "",
+      url: typeof rawPartner.url === "string" ? rawPartner.url : "",
+    };
+  }
+
   if (!title) return null;
-  return { title, content, date, publicationUrl, authors, venue };
+  return { title, content, date, partner };
 };
 
-export async function fetchPublications(options?: {
+export async function fetchProjects(options?: {
   signal?: AbortSignal;
 }): Promise<EnrichedItem[]> {
   const signal = options?.signal;
@@ -80,7 +80,7 @@ export async function fetchPublications(options?: {
 
   const base = listRaw
     .map(toListItem)
-    .filter((x): x is PublicationListItem => x !== null);
+    .filter((x): x is ProjectListItem => x !== null);
 
   // Fetch details for each item (parallel)
   const enriched = await Promise.all(
@@ -105,19 +105,16 @@ export async function fetchPublications(options?: {
   return enriched;
 }
 
-export async function deletePublication(
+export async function deleteProject(
   filename: string,
   options?: { signal?: AbortSignal }
 ): Promise<void> {
-  const res = await fetch(
-    `${API_BASE}/delete`,
-    {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename }),
-      signal: options?.signal,
-    }
-  );
+  const res = await fetch(`${API_BASE}/delete`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename }),
+    signal: options?.signal,
+  });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
@@ -130,28 +127,23 @@ export async function deletePublication(
   }
 }
 
-export type CreatePublicationPayload = {
+export type CreateProjectPayload = {
   title: string;
   content: string | string[];
   date: string; // YYYY-MM-DD
-  publicationUrl: string;
-  authors: string[];
-  venue: string;
+  partner: ProjectPartner;
 };
 
-export async function createPublication(
-  payload: CreatePublicationPayload,
+export async function createProject(
+  payload: CreateProjectPayload,
   options?: { signal?: AbortSignal }
 ): Promise<void> {
-  const res = await fetch(
-    `${API_BASE}/upload`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: options?.signal,
-    }
-  );
+  const res = await fetch(`${API_BASE}/upload`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal: options?.signal,
+  });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {

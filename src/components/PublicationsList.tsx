@@ -353,9 +353,16 @@ export default function PublicationsList() {
                   setFormError("Please enter a valid URL (e.g., https://example.com)");
                   return;
                 }
+                // Convert content to array of paragraphs (double-newline separated),
+                // aligning with server that accepts/validates arrays now.
+                const normalizedContent = formContent.replace(/\r\n/g, "\n");
+                const paragraphs = normalizedContent
+                  .split(/\n{2,}/)
+                  .map((p) => p.trim())
+                  .filter((p) => p.length > 0);
                 const payload = {
                   title: formTitle,
-                  content: formContent,
+                  content: paragraphs.length ? paragraphs : [normalizedContent.trim()],
                   date: formDate,
                   publicationUrl: normalizedUrl,
                   authors: formAuthors
@@ -524,6 +531,193 @@ export default function PublicationsList() {
         <p>No publications found.</p>
         <LoadingOverlay open={isDeleting} label="Deleting publication" />
         <LoadingOverlay open={creating} label="Creating publication" />
+        {/* Add publication modal (also shown in empty state) */}
+        <Modal
+          open={addOpen}
+          onClose={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
+          title="Add publication"
+          className="modal--lg"
+          footer={
+            <>
+              <button
+                className="btn btn-default"
+                onClick={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
+                disabled={creating}
+              >
+                Cancel
+              </button>
+              <button
+                form="pub-form"
+                type="submit"
+                className="btn btn-primary"
+                disabled={creating}
+                formNoValidate
+              >
+                Save
+              </button>
+            </>
+          }
+        >
+          <form
+            id="pub-form"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setFormError(null);
+              if (!formTitle || !formContent || !formDate || !formUrl || !formAuthors || !formVenue) {
+                setFormError("Please fill in all required fields.");
+                return;
+              }
+              setCreating(true);
+              try {
+                // Normalize and validate URL ourselves
+                const rawUrl = formUrl.trim();
+                let normalizedUrl = rawUrl;
+                const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(rawUrl);
+                if (!hasScheme) normalizedUrl = `https://${rawUrl}`;
+                try {
+                  // Throws if invalid
+                  new URL(normalizedUrl);
+                } catch {
+                  setFormError("Please enter a valid URL (e.g., https://example.com)");
+                  return;
+                }
+                // Convert content to array of paragraphs (double-newline separated)
+                const normalizedContent = formContent.replace(/\r\n/g, "\n");
+                const paragraphs = normalizedContent
+                  .split(/\n{2,}/)
+                  .map((p) => p.trim())
+                  .filter((p) => p.length > 0);
+                const payload = {
+                  title: formTitle,
+                  content: paragraphs.length ? paragraphs : [normalizedContent.trim()],
+                  date: formDate,
+                  publicationUrl: normalizedUrl,
+                  authors: formAuthors
+                    .split(',')
+                    .map((a) => a.trim())
+                    .filter((a) => a.length > 0),
+                  venue: formVenue,
+                };
+                try {
+                  await createPublication(payload);
+                } catch (err) {
+                  setFormError(err instanceof Error ? err.message : "Failed to create publication");
+                  return;
+                }
+                await refresh();
+                setAddOpen(false);
+                resetAddForm();
+              } finally {
+                setCreating(false);
+              }
+            }}
+            className="pub-form"
+          >
+            {formError && (
+              <p className="form-error" role="alert" style={{ color: "crimson", margin: 0 }}>
+                {formError}
+              </p>
+            )}
+            <div className="form-grid">
+              <label>
+                <span>Title</span>
+                <input
+                  id="pub-title"
+                  name="title"
+                  type="text"
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                <span>Content</span>
+                <textarea
+                  id="pub-content"
+                  name="content"
+                  value={formContent}
+                  onChange={(e) => setFormContent(e.target.value)}
+                  required
+                  rows={5}
+                />
+              </label>
+              <label>
+                <span>Date</span>
+                <div className="date-field">
+                  <input
+                    id="pub-date"
+                    name="date"
+                    type="date"
+                    value={formDate}
+                    onChange={(e) => setFormDate(e.target.value)}
+                    onPointerDown={(e) => {
+                      // Open the native picker on press; ignore NotAllowedError
+                      e.preventDefault();
+                      type DateInputEl = HTMLInputElement & { showPicker?: () => void };
+                      const el = e.currentTarget as DateInputEl;
+                      try { el.showPicker?.(); } catch { /* ignore */ }
+                      // Restore focus for accessibility (capture element to avoid null)
+                      setTimeout(() => { try { el?.focus?.(); } catch {
+                        // ignore
+                      } }, 0);
+                    }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="icon-btn date-btn"
+                    aria-label="Open date picker"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      const input = (e.currentTarget.previousElementSibling as HTMLInputElement | null);
+                      if (input) {
+                        (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
+                        setTimeout(() => { try { input.focus(); } catch {
+                          // ignore
+                        } }, 0);
+                      }
+                    }}
+                  >
+                    <i className="fa-solid fa-calendar-days" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </label>
+              <label>
+                <span>Publication URL</span>
+                <input
+                  id="pub-url"
+                  name="publicationUrl"
+                  type="url"
+                  value={formUrl}
+                  onChange={(e) => setFormUrl(e.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                <span>Authors (comma separated)</span>
+                <input
+                  id="pub-authors"
+                  name="authors"
+                  type="text"
+                  value={formAuthors}
+                  onChange={(e) => setFormAuthors(e.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                <span>Venue</span>
+                <input
+                  id="pub-venue"
+                  name="venue"
+                  type="text"
+                  value={formVenue}
+                  onChange={(e) => setFormVenue(e.target.value)}
+                  required
+                />
+              </label>
+            </div>
+          </form>
+        </Modal>
       </>
     );
   }

@@ -1,0 +1,25 @@
+import { useState } from "react";
+import PublicationsList from "../components/PublicationsList";
+import ProjectsList from "../components/ProjectsList";
+import Tabs from "../components/Tabs";
+import UserMenu from "../components/UserMenu";
+
+function Home() {
+  const [active, setActive] = useState("publications");
+  const tabs = [
+    { key: "publications", label: "Publications", content: <PublicationsList /> },
+    { key: "projects", label: "Projects", content: <ProjectsList /> },
+  ];
+
+  return (
+    <div className="app">
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1 className="app-title">Polyshape Admin</h1>
+        <UserMenu />
+      </header>
+      <Tabs tabs={tabs} active={active} onChange={setActive} />
+    </div>
+  );
+}
+
+export default Home;

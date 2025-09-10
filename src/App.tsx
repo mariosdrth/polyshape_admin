@@ -1,19 +1,24 @@
-import { useState } from "react";
-import PublicationsList from "./components/PublicationsList";
-import ProjectsList from "./components/ProjectsList";
-import Tabs from "./components/Tabs";
+import { Routes, Route } from "react-router-dom";
+import { withAuthenticationRequired } from "@auth0/auth0-react";
+import LoginPage from "./pages/Login";
+import CallbackPage from "./pages/Callback";
+import Home from "./pages/Home";
+import AutoLogout from "./components/AutoLogout";
+
+const ProtectedHome = withAuthenticationRequired(Home, {
+  onRedirecting: () => <p>Checking authentication…</p>,
+});
 
 function App() {
-  const [active, setActive] = useState("publications");
-  const tabs = [
-    { key: "publications", label: "Publications", content: <PublicationsList /> },
-    { key: "projects", label: "Projects", content: <ProjectsList /> },
-  ];
   return (
-    <div className="app">
-      <h1 className="app-title">Polyshape Admin</h1>
-      <Tabs tabs={tabs} active={active} onChange={setActive} />
-    </div>
+    <>
+      <AutoLogout/>
+      <Routes>
+        <Route path="/" element={<ProtectedHome />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/callback" element={<CallbackPage />} />
+      </Routes>
+    </>
   );
 }
 

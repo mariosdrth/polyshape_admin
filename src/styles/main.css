@@ -233,6 +233,13 @@ body {
   border-color: var(--border);
   border-bottom-color: transparent;
 }
+.error-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
 
 /* Generic buttons */
 .btn {
@@ -351,4 +358,74 @@ body {
   right: 8px;
   transform: translateY(-50%);
   padding: 6px 8px;
+}
+
+/* User menu */
+.user-menu { position: relative; display: flex; align-items: center; }
+.user-avatar-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--card), #fff 6%);
+  padding: 0;
+  border-radius: 999px;
+  line-height: 0;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.25);
+}
+.user-avatar-btn:hover { filter: brightness(1.06); }
+.user-avatar-btn:active { transform: translateY(1px); }
+.user-avatar-img { width: 32px; height: 32px; border-radius: 999px; display: block; }
+.user-avatar-fallback { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; background: var(--border); color: var(--text); font-weight: 600; }
+/* Avatar opacity interaction */
+.user-avatar-btn .user-avatar-img,
+.user-avatar-btn .user-avatar-fallback { opacity: 0.8; transition: opacity 140ms ease; }
+.user-avatar-btn:hover .user-avatar-img,
+.user-avatar-btn:active .user-avatar-img,
+.user-avatar-btn:hover .user-avatar-fallback,
+.user-avatar-btn:active .user-avatar-fallback { opacity: 1; }
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  z-index: 5000;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.user-dropdown.is-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.user-dropdown__header { color: var(--muted); font-size: 0.9rem; padding: 4px 6px; }
+.user-dropdown__item {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.user-dropdown__item:hover { background: color-mix(in oklab, var(--card), #fff 8%); border-color: var(--border); }
+.user-dropdown__item i { color: var(--text); }
+
+.auto-logout__warning {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 1rem 1.5rem;
+  background: #333;
+  color: white;
+  border-radius: 8px;
+  z-index: 9999;
 }

@@ -414,7 +414,9 @@ export default function ProjectsList() {
                       type DateInputEl = HTMLInputElement & { showPicker?: () => void };
                       const el = e.currentTarget as DateInputEl;
                       try { el.showPicker?.(); } catch { /* ignore */ }
-                      setTimeout(() => { try { el?.focus?.(); } catch { } }, 0);
+                      setTimeout(() => { try { el?.focus?.(); } catch {
+                        // ignore
+                      } }, 0);
                     }}
                     required
                   />
@@ -427,7 +429,9 @@ export default function ProjectsList() {
                       const input = (e.currentTarget.previousElementSibling as HTMLInputElement | null);
                       if (input) {
                         (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-                        setTimeout(() => { try { input.focus(); } catch { } }, 0);
+                        setTimeout(() => { try { input.focus(); } catch {
+                          // ignore
+                        } }, 0);
                       }
                     }}
                   >
@@ -613,8 +617,12 @@ export default function ProjectsList() {
                       e.preventDefault();
                       type DateInputEl = HTMLInputElement & { showPicker?: () => void };
                       const el = e.currentTarget as DateInputEl;
-                      try { el.showPicker?.(); } catch { }
-                      setTimeout(() => { try { el?.focus?.(); } catch { } }, 0);
+                      try { el.showPicker?.(); } catch {
+                        // ignore
+                      }
+                      setTimeout(() => { try { el?.focus?.(); } catch {
+                        // ignore
+                      } }, 0);
                     }}
                     required
                   />
@@ -627,7 +635,9 @@ export default function ProjectsList() {
                       const input = (e.currentTarget.previousElementSibling as HTMLInputElement | null);
                       if (input) {
                         (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-                        setTimeout(() => { try { input.focus(); } catch { } }, 0);
+                        setTimeout(() => { try { input.focus(); } catch {
+                          // ignore
+                        } }, 0);
                       }
                     }}
                   >

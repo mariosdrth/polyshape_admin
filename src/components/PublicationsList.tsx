@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingOverlay from "./LoadingOverlay";
-import { fetchPublications, deletePublication, createPublication, type EnrichedItem } from "../controllers/publicationsController";
+import { fetchPublications, deletePublication, createPublication, putPublication, type EnrichedItem } from "../controllers/publicationsController";
 import Modal from "./Modal";
 
 const isAbortError = (e: unknown): e is DOMException =>
@@ -27,6 +27,7 @@ export default function PublicationsList() {
   const [deleting, setDeleting] = useState<Set<string>>(new Set());
   const [confirmPath, setConfirmPath] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,6 +46,7 @@ export default function PublicationsList() {
     setFormAuthors("");
     setFormVenue("");
     setFormError(null);
+    setEditId(null);
   };
 
   useEffect(() => {
@@ -128,7 +130,7 @@ export default function PublicationsList() {
             </button>
           </div>
           <div className="toolbar-right">
-            <button className="btn btn-primary" title="Add publication" onClick={() => { setFormError(null); setAddOpen(true); }}>
+            <button className="btn btn-primary" title="Add publication" onClick={() => { setFormError(null); setEditId(null); setAddOpen(true); }}>
               <i className="fa-solid fa-plus"></i>
               <span className="label">Add</span>
             </button>
@@ -205,6 +207,34 @@ export default function PublicationsList() {
             const d = item.detail;
             return (
               <li key={key} className="pub-item">
+                <button
+                  type="button"
+                  className="icon-btn pub-edit"
+                  aria-label="Edit publication"
+                  title="Edit publication"
+                  onClick={() => {
+                    const d = item.detail;
+                    if (!d) return;
+                    const contentStr = Array.isArray(d.content)
+                      ? d.content
+                          .filter((p): p is string => typeof p === "string")
+                          .map((p) => p.trim())
+                          .filter((p) => p.length > 0)
+                          .join("\n\n")
+                      : (typeof d.content === "string" ? d.content : "");
+                    setFormTitle(d.title || "");
+                    setFormContent(contentStr);
+                    setFormDate(d.date || "");
+                    setFormUrl(d.publicationUrl || "");
+                    setFormAuthors((d.authors || []).filter(Boolean).join(", "));
+                    setFormVenue(d.venue || "");
+                    setFormError(null);
+                    setEditId(lastPathSegment(item.pathname));
+                    setAddOpen(true);
+                  }}
+                >
+                  <i className="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                </button>
                 <button
                   type="button"
                   className="icon-btn pub-trash"
@@ -307,7 +337,8 @@ export default function PublicationsList() {
         <Modal
           open={addOpen}
           onClose={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
-          title="Add publication"
+          title={editId ? "Edit publication" : "Add publication"}
+          closeOnBackdrop={false}
           className="modal--lg"
           footer={
             <>
@@ -353,29 +384,52 @@ export default function PublicationsList() {
                   setFormError("Please enter a valid URL (e.g., https://example.com)");
                   return;
                 }
-                // Convert content to array of paragraphs (double-newline separated),
-                // aligning with server that accepts/validates arrays now.
                 const normalizedContent = formContent.replace(/\r\n/g, "\n");
-                const paragraphs = normalizedContent
-                  .split(/\n{2,}/)
-                  .map((p) => p.trim())
-                  .filter((p) => p.length > 0);
-                const payload = {
-                  title: formTitle,
-                  content: paragraphs.length ? paragraphs : [normalizedContent.trim()],
-                  date: formDate,
-                  publicationUrl: normalizedUrl,
-                  authors: formAuthors
-                    .split(',')
-                    .map((a) => a.trim())
-                    .filter((a) => a.length > 0),
-                  venue: formVenue,
-                };
-                try {
-                  await createPublication(payload);
-                } catch (err) {
-                  setFormError(err instanceof Error ? err.message : "Failed to create publication");
-                  return;
+                const authorsArr = formAuthors
+                  .split(',')
+                  .map((a) => a.trim())
+                  .filter((a) => a.length > 0);
+
+                if (editId) {
+                  // Update existing publication: send content as list (paragraphs)
+                  const paragraphs = normalizedContent
+                    .split(/\n{2,}/)
+                    .map((p) => p.trim())
+                    .filter((p) => p.length > 0);
+                  const payload = {
+                    title: formTitle,
+                    content: paragraphs.length ? paragraphs : [normalizedContent.trim()],
+                    date: formDate,
+                    publicationUrl: normalizedUrl,
+                    authors: authorsArr,
+                    venue: formVenue,
+                  } as const;
+                  try {
+                    await putPublication(editId, payload);
+                  } catch (err) {
+                    setFormError(err instanceof Error ? err.message : "Failed to update publication");
+                    return;
+                  }
+                } else {
+                  // Create new publication: server accepts an array of paragraphs
+                  const paragraphs = normalizedContent
+                    .split(/\n{2,}/)
+                    .map((p) => p.trim())
+                    .filter((p) => p.length > 0);
+                  const payload = {
+                    title: formTitle,
+                    content: paragraphs.length ? paragraphs : [normalizedContent.trim()],
+                    date: formDate,
+                    publicationUrl: normalizedUrl,
+                    authors: authorsArr,
+                    venue: formVenue,
+                  } as const;
+                  try {
+                    await createPublication(payload);
+                  } catch (err) {
+                    setFormError(err instanceof Error ? err.message : "Failed to create publication");
+                    return;
+                  }
                 }
                 await refresh();
                 setAddOpen(false);

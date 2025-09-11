@@ -56,8 +56,8 @@ export default function AutoLogout() {
   if (!showWarning) return null;
 
   return (
-    <div className="auto-logout-warning">
-      <p>You will be logged out in {countdown}s due to inactivity.</p>
+    <div className="auto-logout__warning" role="dialog" aria-live="polite">
+      <p style={{marginTop: 5}}>You will be logged out in {countdown}s due to inactivity.</p>
       <button
         onClick={() => setShowWarning(false)}
         className="btn btn-primary"

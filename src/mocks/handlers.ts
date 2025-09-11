@@ -88,8 +88,8 @@ function slugify(input: string): string {
 }
 
 export const handlers = [
-  // Projects: list
-  http.get("*/api/projects/list", async () => {
+  // Projects: list (REST style at /api/projects/)
+  http.get("*/api/projects/", async () => {
     await delay(apiDelayMs);
     const items = projects.map((p) => ({
       url: projectDetailUrl(p.filename),
@@ -107,29 +107,18 @@ export const handlers = [
     return HttpResponse.json(item.detail);
   }),
 
-  // Projects: delete
-  http.delete("*/api/projects/delete", async ({ request }) => {
+  // Projects: delete (REST)
+  http.delete("*/api/projects/:filename", async ({ params }) => {
     await delay(apiDelayMs);
-    let filename = "";
-    try {
-      const body = (await request.json()) as { filename?: string };
-      filename = typeof body.filename === "string" ? body.filename : "";
-    } catch {
-      // ignore
-    }
-    if (!filename) {
-      return HttpResponse.json({ message: "filename required" }, { status: 400 });
-    }
+    const filename = String(params.filename || "");
     const idx = projects.findIndex((p) => p.filename === filename);
-    if (idx === -1) {
-      return HttpResponse.json({ message: "not found" }, { status: 404 });
-    }
+    if (idx === -1) return HttpResponse.json({ message: "not found" }, { status: 404 });
     projects.splice(idx, 1);
-    return HttpResponse.json({ ok: true });
+    return HttpResponse.json({ ok: true, deleted: filename });
   }),
 
-  // Projects: upload
-  http.post("*/api/projects/upload", async ({ request }) => {
+  // Projects: upload (REST)
+  http.post("*/api/projects/", async ({ request }) => {
     await delay(apiDelayMs);
     type Payload = {
       title: string;
@@ -150,16 +139,43 @@ export const handlers = [
     const filename = `${slugify(title) || "untitled"}.json`;
     const detail: ProjectDetail = {
       title,
-      content: Array.isArray(contentRaw) ? contentRaw.join("\n") : String(contentRaw ?? ""),
+      content: Array.isArray(contentRaw)
+        ? contentRaw.filter((p): p is string => typeof p === "string").join("\n\n")
+        : String(contentRaw ?? ""),
       date,
       partner,
     };
     projects.unshift({ filename, pathname: `/projects/${filename}`, detail });
-    return HttpResponse.json({ ok: true });
+    return HttpResponse.json({ ok: true, created: { filename } });
   }),
 
-  // Publications: list
-  http.get("*/api/publications/list", async () => {
+  // Projects: update (REST)
+  http.put("*/api/projects/:filename", async ({ params, request }) => {
+    await delay(apiDelayMs);
+    const filename = String(params.filename || "");
+    const idx = projects.findIndex((p) => p.filename === filename);
+    if (idx === -1) return HttpResponse.json({ message: "not found" }, { status: 404 });
+    type Payload = { title: string; content: string | string[]; date: string; partner: { name: string; url: string } };
+    const body = (await request.json()) as { contents?: string; contentType?: string };
+    let parsed: Partial<Payload> = {};
+    try { parsed = body.contents ? (JSON.parse(body.contents) as Payload) : {}; } catch { parsed = {}; }
+    const title = typeof parsed.title === "string" ? parsed.title : projects[idx].detail.title;
+    const date = typeof parsed.date === "string" ? parsed.date : projects[idx].detail.date;
+    const partner = {
+      name: typeof parsed.partner?.name === "string" ? parsed.partner.name : projects[idx].detail.partner.name,
+      url: typeof parsed.partner?.url === "string" ? parsed.partner.url : projects[idx].detail.partner.url,
+    };
+    const content = Array.isArray(parsed.content)
+      ? parsed.content.filter((p): p is string => typeof p === "string").join("\n\n")
+      : typeof parsed.content === "string"
+      ? parsed.content
+      : projects[idx].detail.content;
+    projects[idx].detail = { title, content, date, partner };
+    return HttpResponse.json({ ok: true, blob: { pathname: projects[idx].pathname } });
+  }),
+
+  // Publications: list (REST)
+  http.get("*/api/publications/", async () => {
     await delay(apiDelayMs);
     const items = publications.map((p) => ({
       url: publicationDetailUrl(p.filename),
@@ -177,29 +193,18 @@ export const handlers = [
     return HttpResponse.json(item.detail);
   }),
 
-  // Publications: delete
-  http.delete("*/api/publications/delete", async ({ request }) => {
+  // Publications: delete (REST)
+  http.delete("*/api/publications/:filename", async ({ params }) => {
     await delay(apiDelayMs);
-    let filename = "";
-    try {
-      const body = (await request.json()) as { filename?: string };
-      filename = typeof body.filename === "string" ? body.filename : "";
-    } catch {
-      // ignore
-    }
-    if (!filename) {
-      return HttpResponse.json({ message: "filename required" }, { status: 400 });
-    }
+    const filename = String(params.filename || "");
     const idx = publications.findIndex((p) => p.filename === filename);
-    if (idx === -1) {
-      return HttpResponse.json({ message: "not found" }, { status: 404 });
-    }
+    if (idx === -1) return HttpResponse.json({ message: "not found" }, { status: 404 });
     publications.splice(idx, 1);
-    return HttpResponse.json({ ok: true });
+    return HttpResponse.json({ ok: true, deleted: filename });
   }),
 
-  // Publications: upload
-  http.post("*/api/publications/upload", async ({ request }) => {
+  // Publications: upload (REST)
+  http.post("*/api/publications/", async ({ request }) => {
     await delay(apiDelayMs);
     type Payload = {
       title: string;
@@ -212,8 +217,7 @@ export const handlers = [
     const body = (await request.json()) as Partial<Payload>;
     const title = typeof body.title === "string" ? body.title : "";
     const date = typeof body.date === "string" ? body.date : "";
-    const publicationUrl =
-      typeof body.publicationUrl === "string" ? body.publicationUrl : "";
+    const publicationUrl = typeof body.publicationUrl === "string" ? body.publicationUrl : "";
     const authors = Array.isArray(body.authors)
       ? body.authors.filter((a): a is string => typeof a === "string")
       : [];
@@ -223,18 +227,31 @@ export const handlers = [
       : typeof body.content === "string"
       ? body.content
       : "";
-
     if (!title) return HttpResponse.json({ message: "title required" }, { status: 400 });
     const filename = `${slugify(title) || "untitled"}.json`;
-    const detail: PublicationDetail = {
-      title,
-      content,
-      date,
-      publicationUrl,
-      authors,
-      venue,
-    };
+    const detail: PublicationDetail = { title, content, date, publicationUrl, authors, venue };
     publications.unshift({ filename, pathname: `/publications/${filename}`, detail });
-    return HttpResponse.json({ ok: true });
+    return HttpResponse.json({ ok: true, created: { filename } });
+  }),
+
+  // Publications: update (REST)
+  http.put("*/api/publications/:filename", async ({ params, request }) => {
+    await delay(apiDelayMs);
+    const filename = String(params.filename || "");
+    const idx = publications.findIndex((p) => p.filename === filename);
+    if (idx === -1) return HttpResponse.json({ message: "not found" }, { status: 404 });
+    type Payload = { title: string; content: string | string[]; date: string; publicationUrl: string; authors: string[]; venue: string };
+    const body = (await request.json()) as { contents?: string; contentType?: string };
+    let parsed: Partial<Payload> = {};
+    try { parsed = body.contents ? (JSON.parse(body.contents) as Payload) : {}; } catch { parsed = {}; }
+    const prev = publications[idx].detail;
+    const title = typeof parsed.title === "string" ? parsed.title : prev.title;
+    const date = typeof parsed.date === "string" ? parsed.date : prev.date;
+    const publicationUrl = typeof parsed.publicationUrl === "string" ? parsed.publicationUrl : prev.publicationUrl;
+    const authors = Array.isArray(parsed.authors) ? parsed.authors.filter((a): a is string => typeof a === "string") : prev.authors;
+    const venue = typeof parsed.venue === "string" ? parsed.venue : prev.venue;
+    const content = Array.isArray(parsed.content) || typeof parsed.content === "string" ? parsed.content! : prev.content;
+    publications[idx].detail = { title, content, date, publicationUrl, authors, venue };
+    return HttpResponse.json({ ok: true, blob: { pathname: publications[idx].pathname } });
   }),
 ];

@@ -21,6 +21,17 @@ export type EnrichedItem = PublicationListItem & {
 
 const API_BASE = `${API_ROOT}/publications`;
 
+const withCacheBuster = (urlStr: string): string => {
+  try {
+    const u = new URL(urlStr);
+    u.searchParams.set("_", Date.now().toString());
+    return u.toString();
+  } catch {
+    const sep = urlStr.includes("?") ? "&" : "?";
+    return `${urlStr}${sep}_=${Date.now()}`;
+  }
+};
+
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null;
 
@@ -65,7 +76,7 @@ export async function fetchPublications(options?: {
   const signal = options?.signal;
 
   // Fetch list
-  const res = await fetch(`${API_BASE}/list`, { signal });
+  const res = await fetch(`${API_BASE}/`, { signal });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json: unknown = await res.json();
 
@@ -88,7 +99,7 @@ export async function fetchPublications(options?: {
   const enriched = await Promise.all(
     base.map(async (b): Promise<EnrichedItem> => {
       try {
-        const r = await fetch(b.url, { signal });
+        const r = await fetch(withCacheBuster(b.url), { signal, cache: "no-store" });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const dJson: unknown = await r.json();
         const detail = toDetail(dJson);
@@ -111,15 +122,10 @@ export async function deletePublication(
   filename: string,
   options?: { signal?: AbortSignal }
 ): Promise<void> {
-  const res = await fetch(
-    `${API_BASE}/delete`,
-    {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename }),
-      signal: options?.signal,
-    }
-  );
+  const res = await fetch(`${API_BASE}/${encodeURIComponent(filename)}`, {
+    method: "DELETE",
+    signal: options?.signal,
+  });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
@@ -145,15 +151,12 @@ export async function createPublication(
   payload: CreatePublicationPayload,
   options?: { signal?: AbortSignal }
 ): Promise<void> {
-  const res = await fetch(
-    `${API_BASE}/upload`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: options?.signal,
-    }
-  );
+  const res = await fetch(`${API_BASE}/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal: options?.signal,
+  });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
@@ -164,4 +167,26 @@ export async function createPublication(
     }
     throw new Error(msg);
   }
+}
+
+export async function putPublication(
+  id: string,
+  payload: CreatePublicationPayload,
+  options?: { signal?: AbortSignal }
+): Promise<{ ok: boolean; blob: { pathname: string } }> {
+  const res = await fetch(`${API_BASE}/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: JSON.stringify(payload),
+      contentType: "application/json",
+    }),
+    signal: options?.signal,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = (data as { error?: string })?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data as { ok: boolean; blob: { pathname: string } };
 }

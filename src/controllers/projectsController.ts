@@ -30,6 +30,18 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 const isAbortError = (e: unknown): e is DOMException =>
   e instanceof DOMException && e.name === "AbortError";
 
+const withCacheBuster = (urlStr: string): string => {
+  try {
+    const u = new URL(urlStr);
+    u.searchParams.set("_", Date.now().toString());
+    return u.toString();
+  } catch {
+    // Fallback if URL parsing fails
+    const sep = urlStr.includes("?") ? "&" : "?";
+    return `${urlStr}${sep}_=${Date.now()}`;
+  }
+};
+
 const toListItem = (u: unknown): ProjectListItem | null => {
   if (!isRecord(u)) return null;
   const url = typeof u.url === "string" ? u.url : null;
@@ -41,7 +53,14 @@ const toListItem = (u: unknown): ProjectListItem | null => {
 const toDetail = (u: unknown): ProjectDetail | null => {
   if (!isRecord(u)) return null;
   const title = typeof u.title === "string" ? u.title : null;
-  const content = typeof u.content === "string" ? u.content : "";
+  let content: string = "";
+  const rawContent = (u as Record<string, unknown>).content;
+  if (typeof rawContent === "string") {
+    content = rawContent;
+  } else if (Array.isArray(rawContent)) {
+    const parts = rawContent.filter((p): p is string => typeof p === "string").map((p) => p.trim()).filter((p) => p.length > 0);
+    content = parts.join("\n\n");
+  }
   const date = typeof u.date === "string" ? u.date : "";
 
   let partner: ProjectPartner = { name: "", url: "" };
@@ -65,7 +84,7 @@ export async function fetchProjects(options?: {
   const signal = options?.signal;
 
   // Fetch list
-  const res = await fetch(`${API_BASE}/list`, { signal });
+  const res = await fetch(`${API_BASE}/`, { signal });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json: unknown = await res.json();
 
@@ -88,7 +107,7 @@ export async function fetchProjects(options?: {
   const enriched = await Promise.all(
     base.map(async (b): Promise<EnrichedItem> => {
       try {
-        const r = await fetch(b.url, { signal });
+        const r = await fetch(withCacheBuster(b.url), { signal, cache: "no-store" });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const dJson: unknown = await r.json();
         const detail = toDetail(dJson);
@@ -107,26 +126,51 @@ export async function fetchProjects(options?: {
   return enriched;
 }
 
-export async function deleteProject(
-  filename: string,
+export async function fetchProject(
+  id: string,
   options?: { signal?: AbortSignal }
-): Promise<void> {
-  const res = await fetch(`${API_BASE}/delete`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ filename }),
+): Promise<{ id: string; content: ProjectDetail }> {
+  const res = await fetch(`${API_BASE}/${encodeURIComponent(id)}`, {
+    method: "GET",
     signal: options?.signal,
   });
+
+  const data = await res.json().catch(() => ({}));
+
   if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
-    try {
-      const data = (await res.json()) as { message?: string };
-      if (data?.message) msg = data.message;
-    } catch {
-      // ignore parse error
-    }
+    const msg = (data as { error?: string })?.error || `HTTP ${res.status}`;
     throw new Error(msg);
   }
+
+  const { id: projectId, content } = data as {
+    ok: boolean;
+    id: string;
+    content: ProjectDetail;
+  };
+
+  return { id: projectId, content };
+}
+
+export async function deleteProject(
+  id: string,
+  options?: { signal?: AbortSignal }
+): Promise<{ ok: boolean; deleted: string }> {
+  const res = await fetch(
+    `${API_BASE}/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      signal: options?.signal,
+    }
+  );
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    const msg = (data as { error?: string })?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+
+  return data as { ok: boolean; deleted: string };
 }
 
 export type CreateProjectPayload = {
@@ -139,21 +183,45 @@ export type CreateProjectPayload = {
 export async function createProject(
   payload: CreateProjectPayload,
   options?: { signal?: AbortSignal }
-): Promise<void> {
-  const res = await fetch(`${API_BASE}/upload`, {
+): Promise<{ ok: boolean; created: unknown }> {
+  const res = await fetch(`${API_BASE}/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     signal: options?.signal,
   });
+
+  const data = await res.json().catch(() => ({}));
+
   if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
-    try {
-      const data = (await res.json()) as { message?: string };
-      if (data?.message) msg = data.message;
-    } catch {
-      // ignore parse error
-    }
+    const msg = (data as { error?: string })?.error || `HTTP ${res.status}`;
     throw new Error(msg);
   }
+
+  return data as { ok: boolean; created: unknown };
+}
+
+export async function putProject(
+  id: string,
+  payload: CreateProjectPayload,
+  options?: { signal?: AbortSignal }
+): Promise<{ ok: boolean; blob: { pathname: string } }> {
+  const res = await fetch(`${API_BASE}/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: JSON.stringify(payload),
+      contentType: "application/json",
+    }),
+    signal: options?.signal,
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    const msg = (data as { error?: string })?.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+
+  return data as { ok: boolean; blob: { pathname: string } };
 }

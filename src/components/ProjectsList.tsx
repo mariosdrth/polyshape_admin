@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingOverlay from "./LoadingOverlay";
-import { fetchProjects, deleteProject, createProject, type EnrichedItem } from "../controllers/projectsController";
+import { fetchProjects, deleteProject, createProject, putProject, type EnrichedItem } from "../controllers/projectsController";
 import Modal from "./Modal";
 
 const isAbortError = (e: unknown): e is DOMException =>
@@ -26,6 +26,7 @@ export default function ProjectsList() {
   const [confirmPath, setConfirmPath] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formTitle, setFormTitle] = useState("");
@@ -41,6 +42,7 @@ export default function ProjectsList() {
     setFormPartnerName("");
     setFormPartnerUrl("");
     setFormError(null);
+    setEditId(null);
   };
 
   useEffect(() => {
@@ -124,7 +126,7 @@ export default function ProjectsList() {
             </button>
           </div>
           <div className="toolbar-right">
-            <button className="btn btn-primary" title="Add project" onClick={() => { setFormError(null); setAddOpen(true); }}>
+            <button className="btn btn-primary" title="Add project" onClick={() => { setFormError(null); setEditId(null); setAddOpen(true); }}>
               <i className="fa-solid fa-plus"></i>
               <span className="label">Add</span>
             </button>
@@ -201,6 +203,37 @@ export default function ProjectsList() {
             const d = item.detail;
             return (
               <li key={key} className="proj-item">
+                <button
+                  type="button"
+                  className="icon-btn proj-edit"
+                  aria-label="Edit project"
+                  title="Edit project"
+                  onClick={() => {
+                    const d = item.detail;
+                    if (!d) return;
+                    let contentStr = "";
+                    const rawContent = (d as unknown as { content?: unknown }).content;
+                    if (Array.isArray(rawContent)) {
+                      contentStr = rawContent
+                        .filter((p): p is string => typeof p === "string")
+                        .map((p) => p.trim())
+                        .filter((p) => p.length > 0)
+                        .join("\n\n");
+                    } else if (typeof rawContent === "string") {
+                      contentStr = rawContent;
+                    }
+                    setFormTitle(d.title || "");
+                    setFormContent(contentStr);
+                    setFormDate(d.date || "");
+                    setFormPartnerName(d.partner?.name || "");
+                    setFormPartnerUrl(d.partner?.url || "");
+                    setFormError(null);
+                    setEditId(lastPathSegment(item.pathname));
+                    setAddOpen(true);
+                  }}
+                >
+                  <i className="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                </button>
                 <button
                   type="button"
                   className="icon-btn proj-trash"
@@ -301,7 +334,8 @@ export default function ProjectsList() {
         <Modal
           open={addOpen}
           onClose={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
-          title="Add project"
+          title={editId ? "Edit project" : "Add project"}
+          closeOnBackdrop={false}
           className="modal--lg"
           footer={
             <>
@@ -347,21 +381,42 @@ export default function ProjectsList() {
                   return;
                 }
                 const normalized = formContent.replace(/\r\n/g, "\n");
-                const contentArray = normalized
-                  .split(/\n{2,}/)
-                  .map((p) => p.trim())
-                  .filter((p) => p.length > 0);
-                const payload = {
-                  title: formTitle,
-                  content: contentArray.length ? contentArray : [normalized.trim()],
-                  date: formDate,
-                  partner: { name: formPartnerName, url: normalizedUrl },
-                } as const;
-                try {
-                  await createProject(payload);
-                } catch (err) {
-                  setFormError(err instanceof Error ? err.message : "Failed to create project");
-                  return;
+                if (editId) {
+                  // Update existing project: server expects content as a list (paragraphs)
+                  const contentArray = normalized
+                    .split(/\n{2,}/)
+                    .map((p) => p.trim())
+                    .filter((p) => p.length > 0);
+                  const payload = {
+                    title: formTitle,
+                    content: contentArray.length ? contentArray : [normalized.trim()],
+                    date: formDate,
+                    partner: { name: formPartnerName, url: normalizedUrl },
+                  } as const;
+                  try {
+                    await putProject(editId, payload);
+                  } catch (err) {
+                    setFormError(err instanceof Error ? err.message : "Failed to update project");
+                    return;
+                  }
+                } else {
+                  // Create new project: API expects content as paragraphs array
+                  const contentArray = normalized
+                    .split(/\n{2,}/)
+                    .map((p) => p.trim())
+                    .filter((p) => p.length > 0);
+                  const payload = {
+                    title: formTitle,
+                    content: contentArray.length ? contentArray : [normalized.trim()],
+                    date: formDate,
+                    partner: { name: formPartnerName, url: normalizedUrl },
+                  } as const;
+                  try {
+                    await createProject(payload);
+                  } catch (err) {
+                    setFormError(err instanceof Error ? err.message : "Failed to create project");
+                    return;
+                  }
                 }
                 await refresh();
                 setAddOpen(false);

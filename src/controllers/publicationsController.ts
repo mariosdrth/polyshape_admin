@@ -1,3 +1,5 @@
+import { API_ROOT } from "../properties";
+
 export type PublicationListItem = {
   url: string;
   pathname: string;
@@ -17,7 +19,7 @@ export type EnrichedItem = PublicationListItem & {
   error?: string;
 };
 
-const API_BASE = "https://polyshape-mock.vercel.app/api/publications";
+const API_BASE = `${API_ROOT}/publications`;
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null;

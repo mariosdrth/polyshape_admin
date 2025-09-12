@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { withAuthenticationRequired } from "@auth0/auth0-react";
 import LoginPage from "./pages/Login";
 import CallbackPage from "./pages/Callback";
@@ -14,7 +14,9 @@ function App() {
     <>
       <AutoLogout/>
       <Routes>
-        <Route path="/" element={<ProtectedHome />} />
+        <Route path="/" element={<Navigate to="/publications" replace />} />
+        <Route path="/publications" element={<ProtectedHome />} />
+        <Route path="/projects" element={<ProtectedHome />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/callback" element={<CallbackPage />} />
       </Routes>

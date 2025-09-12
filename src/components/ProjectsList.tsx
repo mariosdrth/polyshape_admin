@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { usePagination, Pagination } from "@polyutils/components";
 import LoadingOverlay from "./LoadingOverlay";
-import { fetchProjects, deleteProject, createProject, putProject, type EnrichedItem } from "../controllers/projectsController";
+import {
+  fetchProjects,
+  deleteProject,
+  createProject,
+  putProject,
+  type EnrichedItem,
+} from "../controllers/projectsController";
 import Modal from "./Modal";
 
 const isAbortError = (e: unknown): e is DOMException =>
@@ -20,7 +27,6 @@ const lastPathSegment = (path: string): string => {
 export default function ProjectsList() {
   const [items, setItems] = useState<EnrichedItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
   const [deleting, setDeleting] = useState<Set<string>>(new Set());
   const [confirmPath, setConfirmPath] = useState<string | null>(null);
@@ -70,20 +76,22 @@ export default function ProjectsList() {
       const t = Date.parse(d);
       return isNaN(t) ? 0 : t;
     };
-    const base = [...list].sort((a, b) => byDate(b.detail?.date) - byDate(a.detail?.date));
+    const base = [...list].sort(
+      (a, b) => byDate(b.detail?.date) - byDate(a.detail?.date),
+    );
     if (!q) return base;
-    return base.filter((it) => it.detail?.title && it.detail.title.toLowerCase().includes(q));
+    return base.filter(
+      (it) => it.detail?.title && it.detail.title.toLowerCase().includes(q),
+    );
   }, [list, searchQuery]);
 
-  // Reset/clamp page when result set changes
-  useEffect(() => {
-    if (!filteredSorted.length) {
-      setPage(1);
-      return;
-    }
-    const totalPages = Math.max(1, Math.ceil(filteredSorted.length / PAGE_SIZE));
-    setPage((p) => Math.min(Math.max(1, p), totalPages));
-  }, [filteredSorted]);
+  const {
+    visible: paged,
+    currentPage,
+    totalPages,
+    setPage,
+  } = usePagination(filteredSorted, PAGE_SIZE);
+
   const isDeleting = deleting.size > 0;
 
   const refresh = async () => {
@@ -102,7 +110,12 @@ export default function ProjectsList() {
       <>
         <div className="list-toolbar">
           <div className="toolbar-left">
-            <button className="btn btn-default" onClick={refresh} disabled={isDeleting} title="Refresh projects">
+            <button
+              className="btn btn-default"
+              onClick={refresh}
+              disabled={isDeleting}
+              title="Refresh projects"
+            >
               <i className="fa-solid fa-rotate"></i>
               <span className="label">Refresh</span>
             </button>
@@ -126,7 +139,15 @@ export default function ProjectsList() {
             </button>
           </div>
           <div className="toolbar-right">
-            <button className="btn btn-primary" title="Add project" onClick={() => { setFormError(null); setEditId(null); setAddOpen(true); }}>
+            <button
+              className="btn btn-primary"
+              title="Add project"
+              onClick={() => {
+                setFormError(null);
+                setEditId(null);
+                setAddOpen(true);
+              }}
+            >
               <i className="fa-solid fa-plus"></i>
               <span className="label">Add</span>
             </button>
@@ -143,7 +164,6 @@ export default function ProjectsList() {
     setDeleting((prev) => new Set(prev).add(pathname));
     try {
       await deleteProject(filename);
-      // re-fetch after deletion
       const refreshed = await fetchProjects();
       setItems(refreshed);
     } catch (e: unknown) {
@@ -158,16 +178,17 @@ export default function ProjectsList() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(filteredSorted.length / PAGE_SIZE));
-  const start = (page - 1) * PAGE_SIZE;
-  const paged = filteredSorted.slice(start, start + PAGE_SIZE);
-
   if (list.length !== 0) {
     return (
       <>
         <div className="list-toolbar">
           <div className="toolbar-left">
-            <button className="btn btn-default" onClick={refresh} disabled={isDeleting} title="Refresh projects">
+            <button
+              className="btn btn-default"
+              onClick={refresh}
+              disabled={isDeleting}
+              title="Refresh projects"
+            >
               <i className="fa-solid fa-rotate"></i>
               <span className="label">Refresh</span>
             </button>
@@ -191,7 +212,14 @@ export default function ProjectsList() {
             </button>
           </div>
           <div className="toolbar-right">
-            <button className="btn btn-primary" title="Add project" onClick={() => { setFormError(null); setAddOpen(true); }}>
+            <button
+              className="btn btn-primary"
+              title="Add project"
+              onClick={() => {
+                setFormError(null);
+                setAddOpen(true);
+              }}
+            >
               <i className="fa-solid fa-plus"></i>
               <span className="label">Add</span>
             </button>
@@ -212,7 +240,8 @@ export default function ProjectsList() {
                     const d = item.detail;
                     if (!d) return;
                     let contentStr = "";
-                    const rawContent = (d as unknown as { content?: unknown }).content;
+                    const rawContent = (d as unknown as { content?: unknown })
+                      .content;
                     if (Array.isArray(rawContent)) {
                       contentStr = rawContent
                         .filter((p): p is string => typeof p === "string")
@@ -232,7 +261,10 @@ export default function ProjectsList() {
                     setAddOpen(true);
                   }}
                 >
-                  <i className="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                  <i
+                    className="fa-solid fa-pen-to-square"
+                    aria-hidden="true"
+                  ></i>
                 </button>
                 <button
                   type="button"
@@ -264,8 +296,15 @@ export default function ProjectsList() {
                     <div className="proj-meta">
                       {d.partner?.name && (
                         <div className="proj-partner" title={d.partner.name}>
-                          Partner: {d.partner.url ? (
-                            <a href={d.partner.url} target="_blank" rel="noreferrer">{d.partner.name}</a>
+                          Partner:{" "}
+                          {d.partner.url ? (
+                            <a
+                              href={d.partner.url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              {d.partner.name}
+                            </a>
                           ) : (
                             d.partner.name
                           )}
@@ -278,27 +317,13 @@ export default function ProjectsList() {
             );
           })}
         </ul>
-        {list.length > PAGE_SIZE && (
-          <div className="pagination">
-            <button
-              className="page-btn"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              Prev
-            </button>
-            <span className="page-info">
-              Page {page} of {totalPages}
-            </span>
-            <button
-              className="page-btn"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next
-            </button>
-          </div>
-        )}
+        <div className="pagination">
+          <Pagination
+            totalPages={totalPages}
+            currentPage={currentPage}
+            setPage={setPage}
+          />
+        </div>
         <LoadingOverlay open={isDeleting} label="Deleting project" />
         <LoadingOverlay open={creating} label="Creating project" />
         {/* Confirm delete modal */}
@@ -327,13 +352,20 @@ export default function ProjectsList() {
         >
           <p>
             Are you sure you want to delete{" "}
-            <strong>{confirmPath ? lastPathSegment(confirmPath) : "this item"}</strong>?
+            <strong>
+              {confirmPath ? lastPathSegment(confirmPath) : "this item"}
+            </strong>
+            ?
           </p>
         </Modal>
         {/* Add project modal */}
         <Modal
           open={addOpen}
-          onClose={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
+          onClose={() => {
+            resetAddForm();
+            setFormError(null);
+            setAddOpen(false);
+          }}
           title={editId ? "Edit project" : "Add project"}
           closeOnBackdrop={false}
           className="modal--lg"
@@ -341,7 +373,11 @@ export default function ProjectsList() {
             <>
               <button
                 className="btn btn-default"
-                onClick={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
+                onClick={() => {
+                  resetAddForm();
+                  setFormError(null);
+                  setAddOpen(false);
+                }}
                 disabled={creating}
               >
                 Cancel
@@ -363,7 +399,13 @@ export default function ProjectsList() {
             onSubmit={async (e) => {
               e.preventDefault();
               setFormError(null);
-              if (!formTitle || !formContent || !formDate || !formPartnerName || !formPartnerUrl) {
+              if (
+                !formTitle ||
+                !formContent ||
+                !formDate ||
+                !formPartnerName ||
+                !formPartnerUrl
+              ) {
                 setFormError("Please fill in all required fields.");
                 return;
               }
@@ -377,7 +419,9 @@ export default function ProjectsList() {
                 try {
                   new URL(normalizedUrl);
                 } catch {
-                  setFormError("Please enter a valid partner URL (e.g., https://example.com)");
+                  setFormError(
+                    "Please enter a valid partner URL (e.g., https://example.com)",
+                  );
                   return;
                 }
                 const normalized = formContent.replace(/\r\n/g, "\n");
@@ -389,14 +433,20 @@ export default function ProjectsList() {
                     .filter((p) => p.length > 0);
                   const payload = {
                     title: formTitle,
-                    content: contentArray.length ? contentArray : [normalized.trim()],
+                    content: contentArray.length
+                      ? contentArray
+                      : [normalized.trim()],
                     date: formDate,
                     partner: { name: formPartnerName, url: normalizedUrl },
                   } as const;
                   try {
                     await putProject(editId, payload);
                   } catch (err) {
-                    setFormError(err instanceof Error ? err.message : "Failed to update project");
+                    setFormError(
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to update project",
+                    );
                     return;
                   }
                 } else {
@@ -407,14 +457,20 @@ export default function ProjectsList() {
                     .filter((p) => p.length > 0);
                   const payload = {
                     title: formTitle,
-                    content: contentArray.length ? contentArray : [normalized.trim()],
+                    content: contentArray.length
+                      ? contentArray
+                      : [normalized.trim()],
                     date: formDate,
                     partner: { name: formPartnerName, url: normalizedUrl },
                   } as const;
                   try {
                     await createProject(payload);
                   } catch (err) {
-                    setFormError(err instanceof Error ? err.message : "Failed to create project");
+                    setFormError(
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to create project",
+                    );
                     return;
                   }
                 }
@@ -428,7 +484,11 @@ export default function ProjectsList() {
             className="proj-form"
           >
             {formError && (
-              <p className="form-error" role="alert" style={{ color: "crimson", margin: 0 }}>
+              <p
+                className="form-error"
+                role="alert"
+                style={{ color: "crimson", margin: 0 }}
+              >
                 {formError}
               </p>
             )}
@@ -466,12 +526,22 @@ export default function ProjectsList() {
                     onChange={(e) => setFormDate(e.target.value)}
                     onPointerDown={(e) => {
                       e.preventDefault();
-                      type DateInputEl = HTMLInputElement & { showPicker?: () => void };
+                      type DateInputEl = HTMLInputElement & {
+                        showPicker?: () => void;
+                      };
                       const el = e.currentTarget as DateInputEl;
-                      try { el.showPicker?.(); } catch { /* ignore */ }
-                      setTimeout(() => { try { el?.focus?.(); } catch {
-                        // ignore
-                      } }, 0);
+                      try {
+                        el.showPicker?.();
+                      } catch {
+                        /* ignore */
+                      }
+                      setTimeout(() => {
+                        try {
+                          el?.focus?.();
+                        } catch {
+                          // ignore
+                        }
+                      }, 0);
                     }}
                     required
                   />
@@ -481,16 +551,28 @@ export default function ProjectsList() {
                     aria-label="Open date picker"
                     onPointerDown={(e) => {
                       e.preventDefault();
-                      const input = (e.currentTarget.previousElementSibling as HTMLInputElement | null);
+                      const input = e.currentTarget
+                        .previousElementSibling as HTMLInputElement | null;
                       if (input) {
-                        (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-                        setTimeout(() => { try { input.focus(); } catch {
-                          // ignore
-                        } }, 0);
+                        (
+                          input as HTMLInputElement & {
+                            showPicker?: () => void;
+                          }
+                        ).showPicker?.();
+                        setTimeout(() => {
+                          try {
+                            input.focus();
+                          } catch {
+                            // ignore
+                          }
+                        }, 0);
                       }
                     }}
                   >
-                    <i className="fa-solid fa-calendar-days" aria-hidden="true"></i>
+                    <i
+                      className="fa-solid fa-calendar-days"
+                      aria-hidden="true"
+                    ></i>
                   </button>
                 </div>
               </label>
@@ -526,7 +608,12 @@ export default function ProjectsList() {
       <>
         <div className="list-toolbar">
           <div className="toolbar-left">
-            <button className="btn btn-default" onClick={refresh} disabled={isDeleting} title="Refresh projects">
+            <button
+              className="btn btn-default"
+              onClick={refresh}
+              disabled={isDeleting}
+              title="Refresh projects"
+            >
               <i className="fa-solid fa-rotate"></i>
               <span className="label">Refresh</span>
             </button>
@@ -550,7 +637,14 @@ export default function ProjectsList() {
             </button>
           </div>
           <div className="toolbar-right">
-            <button className="btn btn-primary" title="Add project" onClick={() => { setFormError(null); setAddOpen(true); }}>
+            <button
+              className="btn btn-primary"
+              title="Add project"
+              onClick={() => {
+                setFormError(null);
+                setAddOpen(true);
+              }}
+            >
               <i className="fa-solid fa-plus"></i>
               <span className="label">Add</span>
             </button>
@@ -562,14 +656,22 @@ export default function ProjectsList() {
         {/* Add project modal (also shown in empty state) */}
         <Modal
           open={addOpen}
-          onClose={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
+          onClose={() => {
+            resetAddForm();
+            setFormError(null);
+            setAddOpen(false);
+          }}
           title="Add project"
           className="modal--lg"
           footer={
             <>
               <button
                 className="btn btn-default"
-                onClick={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
+                onClick={() => {
+                  resetAddForm();
+                  setFormError(null);
+                  setAddOpen(false);
+                }}
                 disabled={creating}
               >
                 Cancel
@@ -591,7 +693,13 @@ export default function ProjectsList() {
             onSubmit={async (e) => {
               e.preventDefault();
               setFormError(null);
-              if (!formTitle || !formContent || !formDate || !formPartnerName || !formPartnerUrl) {
+              if (
+                !formTitle ||
+                !formContent ||
+                !formDate ||
+                !formPartnerName ||
+                !formPartnerUrl
+              ) {
                 setFormError("Please fill in all required fields.");
                 return;
               }
@@ -601,8 +709,12 @@ export default function ProjectsList() {
                 let normalizedUrl = rawUrl;
                 const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(rawUrl);
                 if (!hasScheme) normalizedUrl = `https://${rawUrl}`;
-                try { new URL(normalizedUrl); } catch {
-                  setFormError("Please enter a valid partner URL (e.g., https://example.com)");
+                try {
+                  new URL(normalizedUrl);
+                } catch {
+                  setFormError(
+                    "Please enter a valid partner URL (e.g., https://example.com)",
+                  );
                   return;
                 }
                 const normalized = formContent.replace(/\r\n/g, "\n");
@@ -612,14 +724,20 @@ export default function ProjectsList() {
                   .filter((p) => p.length > 0);
                 const payload = {
                   title: formTitle,
-                  content: contentArray.length ? contentArray : [normalized.trim()],
+                  content: contentArray.length
+                    ? contentArray
+                    : [normalized.trim()],
                   date: formDate,
                   partner: { name: formPartnerName, url: normalizedUrl },
                 } as const;
                 try {
                   await createProject(payload);
                 } catch (err) {
-                  setFormError(err instanceof Error ? err.message : "Failed to create project");
+                  setFormError(
+                    err instanceof Error
+                      ? err.message
+                      : "Failed to create project",
+                  );
                   return;
                 }
                 await refresh();
@@ -632,7 +750,11 @@ export default function ProjectsList() {
             className="proj-form"
           >
             {formError && (
-              <p className="form-error" role="alert" style={{ color: "crimson", margin: 0 }}>
+              <p
+                className="form-error"
+                role="alert"
+                style={{ color: "crimson", margin: 0 }}
+              >
                 {formError}
               </p>
             )}
@@ -670,14 +792,22 @@ export default function ProjectsList() {
                     onChange={(e) => setFormDate(e.target.value)}
                     onPointerDown={(e) => {
                       e.preventDefault();
-                      type DateInputEl = HTMLInputElement & { showPicker?: () => void };
+                      type DateInputEl = HTMLInputElement & {
+                        showPicker?: () => void;
+                      };
                       const el = e.currentTarget as DateInputEl;
-                      try { el.showPicker?.(); } catch {
+                      try {
+                        el.showPicker?.();
+                      } catch {
                         // ignore
                       }
-                      setTimeout(() => { try { el?.focus?.(); } catch {
-                        // ignore
-                      } }, 0);
+                      setTimeout(() => {
+                        try {
+                          el?.focus?.();
+                        } catch {
+                          // ignore
+                        }
+                      }, 0);
                     }}
                     required
                   />
@@ -687,16 +817,28 @@ export default function ProjectsList() {
                     aria-label="Open date picker"
                     onPointerDown={(e) => {
                       e.preventDefault();
-                      const input = (e.currentTarget.previousElementSibling as HTMLInputElement | null);
+                      const input = e.currentTarget
+                        .previousElementSibling as HTMLInputElement | null;
                       if (input) {
-                        (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-                        setTimeout(() => { try { input.focus(); } catch {
-                          // ignore
-                        } }, 0);
+                        (
+                          input as HTMLInputElement & {
+                            showPicker?: () => void;
+                          }
+                        ).showPicker?.();
+                        setTimeout(() => {
+                          try {
+                            input.focus();
+                          } catch {
+                            // ignore
+                          }
+                        }, 0);
                       }
                     }}
                   >
-                    <i className="fa-solid fa-calendar-days" aria-hidden="true"></i>
+                    <i
+                      className="fa-solid fa-calendar-days"
+                      aria-hidden="true"
+                    ></i>
                   </button>
                 </div>
               </label>

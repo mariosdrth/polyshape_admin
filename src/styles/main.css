@@ -1,15 +1,16 @@
 /* App-level styles */
 :root {
-  --bg: #070D1A;
+  --bg: #070d1a;
   --text: #e6e6e6;
   --muted: #a0a6b0;
   --card: #151821;
   --border: #222634;
   --accent: #7c9eff;
-  --main-purple: #6165AD;
-  --secondary-purple: #949BDD;
-  --main-orange: #D69D0D;
-  --secondary-orange: #FFC545;
+  --main-purple: #6165ad;
+  --secondary-purple: #949bdd;
+  --main-orange: #d69d0d;
+  --secondary-orange: #ffc545;
+  --arrow-bg: rgba(255, 255, 255, 0.04);
 }
 
 /* Base reset touches for consistency */
@@ -100,26 +101,33 @@ body {
 .proj-partner { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Pagination */
-.pagination {
-  margin-top: 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  justify-self: center;
-}
-.page-btn {
-  padding: 6px 10px;
-  border-radius: 8px;
+.pagination .pager__btn {
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--text);
-  cursor: pointer;
 }
-.page-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.pagination .pager__btn:hover:not(:disabled) {
+  background: color-mix(
+    in srgb,
+    var(--main-orange) 12%,
+    var(--arrow-bg)
+  );
 }
-.page-info { color: var(--muted); }
+.pagination .pager__btn--active {
+  background: color-mix(
+    in srgb,
+    var(--main-orange) 18%,
+    var(--arrow-bg)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--main-orange) 40%,
+    var(--border)
+  );
+}
+.pagination .pager__ellipsis {
+  color: var(--muted);
+}
 
 /* Icon button + trash */
 .icon-btn {

@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import LoadingOverlay from "./LoadingOverlay";
-import { fetchPublications, deletePublication, createPublication, putPublication, type EnrichedItem } from "../controllers/publicationsController";
+import { usePagination, Pagination } from "@polyutils/components";
+import {
+  fetchPublications,
+  deletePublication,
+  createPublication,
+  putPublication,
+  type EnrichedItem,
+} from "../controllers/publicationsController";
 import Modal from "./Modal";
 
 const isAbortError = (e: unknown): e is DOMException =>
@@ -22,7 +29,6 @@ const lastPathSegment = (path: string): string => {
 export default function PublicationsList() {
   const [items, setItems] = useState<EnrichedItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
   const [deleting, setDeleting] = useState<Set<string>>(new Set());
   const [confirmPath, setConfirmPath] = useState<string | null>(null);
@@ -74,20 +80,21 @@ export default function PublicationsList() {
       const t = Date.parse(d);
       return isNaN(t) ? 0 : t;
     };
-    const base = [...list].sort((a, b) => byDate(b.detail?.date) - byDate(a.detail?.date));
+    const base = [...list].sort(
+      (a, b) => byDate(b.detail?.date) - byDate(a.detail?.date),
+    );
     if (!q) return base;
-    return base.filter((it) => it.detail?.title && it.detail.title.toLowerCase().includes(q));
+    return base.filter(
+      (it) => it.detail?.title && it.detail.title.toLowerCase().includes(q),
+    );
   }, [list, searchQuery]);
 
-  // Reset/clamp page when result set changes
-  useEffect(() => {
-    if (!filteredSorted.length) {
-      setPage(1);
-      return;
-    }
-    const totalPages = Math.max(1, Math.ceil(filteredSorted.length / PAGE_SIZE));
-    setPage((p) => Math.min(Math.max(1, p), totalPages));
-  }, [filteredSorted]);
+  const {
+    visible: paged,
+    currentPage,
+    totalPages,
+    setPage,
+  } = usePagination(filteredSorted, PAGE_SIZE);
   const isDeleting = deleting.size > 0;
 
   const refresh = async () => {
@@ -106,7 +113,12 @@ export default function PublicationsList() {
       <>
         <div className="list-toolbar">
           <div className="toolbar-left">
-            <button className="btn btn-default" onClick={refresh} disabled={isDeleting} title="Refresh publications">
+            <button
+              className="btn btn-default"
+              onClick={refresh}
+              disabled={isDeleting}
+              title="Refresh publications"
+            >
               <i className="fa-solid fa-rotate"></i>
               <span className="label">Refresh</span>
             </button>
@@ -130,7 +142,15 @@ export default function PublicationsList() {
             </button>
           </div>
           <div className="toolbar-right">
-            <button className="btn btn-primary" title="Add publication" onClick={() => { setFormError(null); setEditId(null); setAddOpen(true); }}>
+            <button
+              className="btn btn-primary"
+              title="Add publication"
+              onClick={() => {
+                setFormError(null);
+                setEditId(null);
+                setAddOpen(true);
+              }}
+            >
               <i className="fa-solid fa-plus"></i>
               <span className="label">Add</span>
             </button>
@@ -162,16 +182,17 @@ export default function PublicationsList() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(filteredSorted.length / PAGE_SIZE));
-  const start = (page - 1) * PAGE_SIZE;
-  const paged = filteredSorted.slice(start, start + PAGE_SIZE);
-
   if (list.length !== 0) {
     return (
       <>
         <div className="list-toolbar">
           <div className="toolbar-left">
-            <button className="btn btn-default" onClick={refresh} disabled={isDeleting} title="Refresh publications">
+            <button
+              className="btn btn-default"
+              onClick={refresh}
+              disabled={isDeleting}
+              title="Refresh publications"
+            >
               <i className="fa-solid fa-rotate"></i>
               <span className="label">Refresh</span>
             </button>
@@ -195,7 +216,14 @@ export default function PublicationsList() {
             </button>
           </div>
           <div className="toolbar-right">
-            <button className="btn btn-primary" title="Add publication" onClick={() => { setFormError(null); setAddOpen(true); }}>
+            <button
+              className="btn btn-primary"
+              title="Add publication"
+              onClick={() => {
+                setFormError(null);
+                setAddOpen(true);
+              }}
+            >
               <i className="fa-solid fa-plus"></i>
               <span className="label">Add</span>
             </button>
@@ -221,19 +249,26 @@ export default function PublicationsList() {
                           .map((p) => p.trim())
                           .filter((p) => p.length > 0)
                           .join("\n\n")
-                      : (typeof d.content === "string" ? d.content : "");
+                      : typeof d.content === "string"
+                        ? d.content
+                        : "";
                     setFormTitle(d.title || "");
                     setFormContent(contentStr);
                     setFormDate(d.date || "");
                     setFormUrl(d.publicationUrl || "");
-                    setFormAuthors((d.authors || []).filter(Boolean).join(", "));
+                    setFormAuthors(
+                      (d.authors || []).filter(Boolean).join(", "),
+                    );
                     setFormVenue(d.venue || "");
                     setFormError(null);
                     setEditId(lastPathSegment(item.pathname));
                     setAddOpen(true);
                   }}
                 >
-                  <i className="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                  <i
+                    className="fa-solid fa-pen-to-square"
+                    aria-hidden="true"
+                  ></i>
                 </button>
                 <button
                   type="button"
@@ -279,27 +314,13 @@ export default function PublicationsList() {
             );
           })}
         </ul>
-        {list.length > PAGE_SIZE && (
-          <div className="pagination">
-            <button
-              className="page-btn"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              Prev
-            </button>
-            <span className="page-info">
-              Page {page} of {totalPages}
-            </span>
-            <button
-              className="page-btn"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next
-            </button>
-          </div>
-        )}
+        <div className="pagination">
+          <Pagination
+            totalPages={totalPages}
+            currentPage={currentPage}
+            setPage={setPage}
+          />
+        </div>
         <LoadingOverlay open={isDeleting} label="Deleting publication" />
         <LoadingOverlay open={creating} label="Creating publication" />
         {/* Confirm delete modal */}
@@ -327,16 +348,21 @@ export default function PublicationsList() {
           }
         >
           <p>
-            Are you sure you want to delete
-            {" "}
-            <strong>{confirmPath ? lastPathSegment(confirmPath) : "this item"}</strong>
+            Are you sure you want to delete{" "}
+            <strong>
+              {confirmPath ? lastPathSegment(confirmPath) : "this item"}
+            </strong>
             ?
           </p>
         </Modal>
         {/* Add publication modal */}
         <Modal
           open={addOpen}
-          onClose={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
+          onClose={() => {
+            resetAddForm();
+            setFormError(null);
+            setAddOpen(false);
+          }}
           title={editId ? "Edit publication" : "Add publication"}
           closeOnBackdrop={false}
           className="modal--lg"
@@ -344,7 +370,11 @@ export default function PublicationsList() {
             <>
               <button
                 className="btn btn-default"
-                onClick={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
+                onClick={() => {
+                  resetAddForm();
+                  setFormError(null);
+                  setAddOpen(false);
+                }}
                 disabled={creating}
               >
                 Cancel
@@ -366,7 +396,14 @@ export default function PublicationsList() {
             onSubmit={async (e) => {
               e.preventDefault();
               setFormError(null);
-              if (!formTitle || !formContent || !formDate || !formUrl || !formAuthors || !formVenue) {
+              if (
+                !formTitle ||
+                !formContent ||
+                !formDate ||
+                !formUrl ||
+                !formAuthors ||
+                !formVenue
+              ) {
                 setFormError("Please fill in all required fields.");
                 return;
               }
@@ -381,12 +418,14 @@ export default function PublicationsList() {
                   // Throws if invalid
                   new URL(normalizedUrl);
                 } catch {
-                  setFormError("Please enter a valid URL (e.g., https://example.com)");
+                  setFormError(
+                    "Please enter a valid URL (e.g., https://example.com)",
+                  );
                   return;
                 }
                 const normalizedContent = formContent.replace(/\r\n/g, "\n");
                 const authorsArr = formAuthors
-                  .split(',')
+                  .split(",")
                   .map((a) => a.trim())
                   .filter((a) => a.length > 0);
 
@@ -398,7 +437,9 @@ export default function PublicationsList() {
                     .filter((p) => p.length > 0);
                   const payload = {
                     title: formTitle,
-                    content: paragraphs.length ? paragraphs : [normalizedContent.trim()],
+                    content: paragraphs.length
+                      ? paragraphs
+                      : [normalizedContent.trim()],
                     date: formDate,
                     publicationUrl: normalizedUrl,
                     authors: authorsArr,
@@ -407,7 +448,11 @@ export default function PublicationsList() {
                   try {
                     await putPublication(editId, payload);
                   } catch (err) {
-                    setFormError(err instanceof Error ? err.message : "Failed to update publication");
+                    setFormError(
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to update publication",
+                    );
                     return;
                   }
                 } else {
@@ -418,7 +463,9 @@ export default function PublicationsList() {
                     .filter((p) => p.length > 0);
                   const payload = {
                     title: formTitle,
-                    content: paragraphs.length ? paragraphs : [normalizedContent.trim()],
+                    content: paragraphs.length
+                      ? paragraphs
+                      : [normalizedContent.trim()],
                     date: formDate,
                     publicationUrl: normalizedUrl,
                     authors: authorsArr,
@@ -427,7 +474,11 @@ export default function PublicationsList() {
                   try {
                     await createPublication(payload);
                   } catch (err) {
-                    setFormError(err instanceof Error ? err.message : "Failed to create publication");
+                    setFormError(
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to create publication",
+                    );
                     return;
                   }
                 }
@@ -441,7 +492,11 @@ export default function PublicationsList() {
             className="pub-form"
           >
             {formError && (
-              <p className="form-error" role="alert" style={{ color: "crimson", margin: 0 }}>
+              <p
+                className="form-error"
+                role="alert"
+                style={{ color: "crimson", margin: 0 }}
+              >
                 {formError}
               </p>
             )}
@@ -480,13 +535,23 @@ export default function PublicationsList() {
                     onPointerDown={(e) => {
                       // Open the native picker on press; ignore NotAllowedError
                       e.preventDefault();
-                      type DateInputEl = HTMLInputElement & { showPicker?: () => void };
+                      type DateInputEl = HTMLInputElement & {
+                        showPicker?: () => void;
+                      };
                       const el = e.currentTarget as DateInputEl;
-                      try { el.showPicker?.(); } catch { /* ignore */ }
+                      try {
+                        el.showPicker?.();
+                      } catch {
+                        /* ignore */
+                      }
                       // Restore focus for accessibility (capture element to avoid null)
-                      setTimeout(() => { try { el?.focus?.(); } catch {
-                        // ignore
-                      } }, 0);
+                      setTimeout(() => {
+                        try {
+                          el?.focus?.();
+                        } catch {
+                          // ignore
+                        }
+                      }, 0);
                     }}
                     required
                   />
@@ -496,16 +561,28 @@ export default function PublicationsList() {
                     aria-label="Open date picker"
                     onPointerDown={(e) => {
                       e.preventDefault();
-                      const input = (e.currentTarget.previousElementSibling as HTMLInputElement | null);
+                      const input = e.currentTarget
+                        .previousElementSibling as HTMLInputElement | null;
                       if (input) {
-                        (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-                        setTimeout(() => { try { input.focus(); } catch {
-                          // ignore
-                        } }, 0);
+                        (
+                          input as HTMLInputElement & {
+                            showPicker?: () => void;
+                          }
+                        ).showPicker?.();
+                        setTimeout(() => {
+                          try {
+                            input.focus();
+                          } catch {
+                            // ignore
+                          }
+                        }, 0);
                       }
                     }}
                   >
-                    <i className="fa-solid fa-calendar-days" aria-hidden="true"></i>
+                    <i
+                      className="fa-solid fa-calendar-days"
+                      aria-hidden="true"
+                    ></i>
                   </button>
                 </div>
               </label>
@@ -552,7 +629,12 @@ export default function PublicationsList() {
       <>
         <div className="list-toolbar">
           <div className="toolbar-left">
-            <button className="btn btn-default" onClick={refresh} disabled={isDeleting} title="Refresh publications">
+            <button
+              className="btn btn-default"
+              onClick={refresh}
+              disabled={isDeleting}
+              title="Refresh publications"
+            >
               <i className="fa-solid fa-rotate"></i>
               <span className="label">Refresh</span>
             </button>
@@ -576,26 +658,41 @@ export default function PublicationsList() {
             </button>
           </div>
           <div className="toolbar-right">
-            <button className="btn btn-primary" title="Add publication" onClick={() => { setFormError(null); setAddOpen(true); }}>
+            <button
+              className="btn btn-primary"
+              title="Add publication"
+              onClick={() => {
+                setFormError(null);
+                setAddOpen(true);
+              }}
+            >
               <i className="fa-solid fa-plus"></i>
               <span className="label">Add</span>
             </button>
-              </div>
-            </div>
+          </div>
+        </div>
         <p>No publications found.</p>
         <LoadingOverlay open={isDeleting} label="Deleting publication" />
         <LoadingOverlay open={creating} label="Creating publication" />
         {/* Add publication modal (also shown in empty state) */}
         <Modal
           open={addOpen}
-          onClose={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
+          onClose={() => {
+            resetAddForm();
+            setFormError(null);
+            setAddOpen(false);
+          }}
           title="Add publication"
           className="modal--lg"
           footer={
             <>
               <button
                 className="btn btn-default"
-                onClick={() => { resetAddForm(); setFormError(null); setAddOpen(false); }}
+                onClick={() => {
+                  resetAddForm();
+                  setFormError(null);
+                  setAddOpen(false);
+                }}
                 disabled={creating}
               >
                 Cancel
@@ -617,7 +714,14 @@ export default function PublicationsList() {
             onSubmit={async (e) => {
               e.preventDefault();
               setFormError(null);
-              if (!formTitle || !formContent || !formDate || !formUrl || !formAuthors || !formVenue) {
+              if (
+                !formTitle ||
+                !formContent ||
+                !formDate ||
+                !formUrl ||
+                !formAuthors ||
+                !formVenue
+              ) {
                 setFormError("Please fill in all required fields.");
                 return;
               }
@@ -632,7 +736,9 @@ export default function PublicationsList() {
                   // Throws if invalid
                   new URL(normalizedUrl);
                 } catch {
-                  setFormError("Please enter a valid URL (e.g., https://example.com)");
+                  setFormError(
+                    "Please enter a valid URL (e.g., https://example.com)",
+                  );
                   return;
                 }
                 // Convert content to array of paragraphs (double-newline separated)
@@ -643,11 +749,13 @@ export default function PublicationsList() {
                   .filter((p) => p.length > 0);
                 const payload = {
                   title: formTitle,
-                  content: paragraphs.length ? paragraphs : [normalizedContent.trim()],
+                  content: paragraphs.length
+                    ? paragraphs
+                    : [normalizedContent.trim()],
                   date: formDate,
                   publicationUrl: normalizedUrl,
                   authors: formAuthors
-                    .split(',')
+                    .split(",")
                     .map((a) => a.trim())
                     .filter((a) => a.length > 0),
                   venue: formVenue,
@@ -655,7 +763,11 @@ export default function PublicationsList() {
                 try {
                   await createPublication(payload);
                 } catch (err) {
-                  setFormError(err instanceof Error ? err.message : "Failed to create publication");
+                  setFormError(
+                    err instanceof Error
+                      ? err.message
+                      : "Failed to create publication",
+                  );
                   return;
                 }
                 await refresh();
@@ -668,7 +780,11 @@ export default function PublicationsList() {
             className="pub-form"
           >
             {formError && (
-              <p className="form-error" role="alert" style={{ color: "crimson", margin: 0 }}>
+              <p
+                className="form-error"
+                role="alert"
+                style={{ color: "crimson", margin: 0 }}
+              >
                 {formError}
               </p>
             )}
@@ -707,13 +823,23 @@ export default function PublicationsList() {
                     onPointerDown={(e) => {
                       // Open the native picker on press; ignore NotAllowedError
                       e.preventDefault();
-                      type DateInputEl = HTMLInputElement & { showPicker?: () => void };
+                      type DateInputEl = HTMLInputElement & {
+                        showPicker?: () => void;
+                      };
                       const el = e.currentTarget as DateInputEl;
-                      try { el.showPicker?.(); } catch { /* ignore */ }
+                      try {
+                        el.showPicker?.();
+                      } catch {
+                        /* ignore */
+                      }
                       // Restore focus for accessibility (capture element to avoid null)
-                      setTimeout(() => { try { el?.focus?.(); } catch {
-                        // ignore
-                      } }, 0);
+                      setTimeout(() => {
+                        try {
+                          el?.focus?.();
+                        } catch {
+                          // ignore
+                        }
+                      }, 0);
                     }}
                     required
                   />
@@ -723,16 +849,28 @@ export default function PublicationsList() {
                     aria-label="Open date picker"
                     onPointerDown={(e) => {
                       e.preventDefault();
-                      const input = (e.currentTarget.previousElementSibling as HTMLInputElement | null);
+                      const input = e.currentTarget
+                        .previousElementSibling as HTMLInputElement | null;
                       if (input) {
-                        (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-                        setTimeout(() => { try { input.focus(); } catch {
-                          // ignore
-                        } }, 0);
+                        (
+                          input as HTMLInputElement & {
+                            showPicker?: () => void;
+                          }
+                        ).showPicker?.();
+                        setTimeout(() => {
+                          try {
+                            input.focus();
+                          } catch {
+                            // ignore
+                          }
+                        }, 0);
                       }
                     }}
                   >
-                    <i className="fa-solid fa-calendar-days" aria-hidden="true"></i>
+                    <i
+                      className="fa-solid fa-calendar-days"
+                      aria-hidden="true"
+                    ></i>
                   </button>
                 </div>
               </label>

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import PublicationsList from "../components/PublicationsList";
-import ProjectsList from "../components/ProjectsList";
+import PublicationsList from "../components/publications/PublicationsList";
+import ProjectsList from "../components/projects/ProjectsList";
 import Tabs from "../components/Tabs";
 import UserMenu from "../components/UserMenu";
 

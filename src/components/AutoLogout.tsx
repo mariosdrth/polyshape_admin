@@ -11,6 +11,8 @@ export default function AutoLogout() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    // Never log out in development mode
+    if (import.meta.env.DEV) return;
 
     let logoutTimer: number;
     let warningTimer: number;
